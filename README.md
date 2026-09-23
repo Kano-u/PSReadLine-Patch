@@ -38,13 +38,19 @@ if (_singleton._options.ShowToolTips && itemSelected && !string.IsNullOrWhiteSpa
 | 文件 | 改动 |
 | --- | --- |
 | `PSReadLine/Prediction.Entry.cs` | 每行尾部不再渲染 `[SOURCE]`，改为渲染 `ToolTip`；备注用 `ListPredictionColor`（即原 `[kc]` 标签的橘色）；备注列左边缘对齐，宽度上限见下 |
-| `PSReadLine/Prediction.Views.cs` | 新增常量 `NoteMaxWidth = 40`；删掉选中项下方的灰色 tooltip：移除渲染调用、高度预留（`_tooltipHeight` / `_maxTooltipHeight` / `TooltipMaxHeight`）与 `RenderTooltip`、`GetToolTipLineCountForHeightCheck` 两个方法 |
+| `PSReadLine/Prediction.Views.cs` | 新增常量 `NoteMaxWidth = 40`；删掉选中项下方灰色 tooltip 的渲染调用，并让 `HeightIsTooSmall` 不再为它预留高度 |
 
 备注宽度 = `min(40, (列表宽 - 13) * 0.4)`，命令列在前、备注在后，两列各自固定，所以每一行的备注都从同一列开始。超长备注截断加 `…`。
 
 `Source` 并没有消失：底部 `<kc(10)>` 那行和 `Ctrl+↑↓` 切换来源都仍然正常，它们自己维护来源列表，不读每行这个字段。
 
 `F4`（在备用屏幕里看完整备注）也保留着，它走的是 `SelectedItemTooltip`，与删掉的灰色 tooltip 无关。
+
+### 为什么不动那些变成死代码的成员
+
+删掉渲染调用后，`RenderTooltip`、`GetToolTipLineCountForHeightCheck`、`_tooltipHeight`、`_maxTooltipHeight`、`TooltipMaxHeight` 就没有调用者了。它们**故意留着**：补丁要小，跟上游撞车的面积才小。清掉这几百行会让上游一改那块代码就打不上补丁，而留着只是几个不执行的成员，没有任何运行时影响。
+
+`HeightIsTooSmall` 是例外，必须一起改——它仍在调 `GetToolTipLineCountForHeightCheck`，会为“已经不再渲染的 tooltip”预留 4 行。不改的话，选中带备注的候选时，终端稍矮整个列表会被误判“窗口太小”而消失。
 
 ## 用 kc 安装
 
