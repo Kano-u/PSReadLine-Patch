@@ -1,0 +1,24 @@
+diff --git a/PSReadLine/Prediction.cs b/PSReadLine/Prediction.cs
+index bd1448b..8c50348 100644
+--- a/PSReadLine/Prediction.cs
++++ b/PSReadLine/Prediction.cs
+@@ -182,6 +182,19 @@ namespace Microsoft.PowerShell
+             UpdateListSelection(numericArg);
+         }
+ 
++        /// <summary>
++        /// Returns true if the list view currently has an item selected.
++        /// Callers that own a key can use this to decide between 'PreviousSuggestion'
++        /// and their own behavior: while a selection exists, the arrow keys navigate
++        /// the list instead of doing whatever the caller binds them to.
++        /// </summary>
++        public static bool HasPredictionSelection()
++        {
++            return _singleton._prediction.ActiveView is PredictionListView listView
++                && listView.HasActiveSuggestion
++                && listView.SelectedItemIndex >= 0;
++        }
++
+         /// <summary>
+         /// Show the tooltip of the currently selected list item in the full view.
+         /// </summary>
