@@ -1,8 +1,8 @@
 diff --git a/PSReadLine/Prediction.Entry.cs b/PSReadLine/Prediction.Entry.cs
-index 643afa5..d7e4025 100644
+index 643afa5..305f82f 100644
 --- a/PSReadLine/Prediction.Entry.cs
 +++ b/PSReadLine/Prediction.Entry.cs
-@@ -108,18 +108,22 @@ namespace Microsoft.PowerShell
+@@ -108,18 +108,21 @@ namespace Microsoft.PowerShell
                      return _listItemTextSelected;
                  }
  
@@ -29,12 +29,11 @@ index 643afa5..d7e4025 100644
 -                // 5 is the length of the decoration characters: "> ", " [", and ']'.
 -                int textWidth = width - sourceWidth - 5;
 +                // 3 is the leading '> ' plus the space that separates the two columns.
-+                string noteColor = _singleton._options._listPredictionTooltipColor;
 +                int textWidth = width - noteWidth - 3;
                  string textMetadataColor = _singleton._options._listPredictionColor;
  
                  StringBuilder line = new StringBuilder(capacity: width)
-@@ -388,22 +392,26 @@ namespace Microsoft.PowerShell
+@@ -388,22 +391,33 @@ namespace Microsoft.PowerShell
                      }
                  }
  
@@ -51,7 +50,6 @@ index 643afa5..d7e4025 100644
                  {
 -                    line.Append(Source, 0, sourceStrLen)
 -                        .Append(Ellipsis);
--                }
 +                    int noteStrLen = note.Length;
 +                    if (LengthInBufferCells(note) > noteWidth)
 +                    {
@@ -61,17 +59,24 @@ index 643afa5..d7e4025 100644
 +                    // The command above was padded to a fixed width, so the note column starts
 +                    // at the same cell on every row. That fixed left edge is what makes the
 +                    // notes scannable; right-aligning them would leave ragged left edges.
++                    // The metadata color is the one the '[SOURCE]' label used, so notes keep
++                    // the same orange the list already used to mark kc's own candidates.
 +                    line.Append(' ')
-+                        .Append(noteColor)
++                        .Append(textMetadataColor)
 +                        .Append(note, 0, noteStrLen);
- 
--                line.EndColorSection(selectionHighlighting)
--                    .Append(']');
++
 +                    if (noteStrLen < note.Length)
 +                    {
 +                        line.Append(Ellipsis);
 +                    }
-+                }
+                 }
+ 
+-                line.EndColorSection(selectionHighlighting)
+-                    .Append(']');
++                // Always reset: the note runs in the metadata color, and without this the
++                // next row would inherit it. This mirrors the reset the '[SOURCE]' label
++                // used to perform at the same point.
++                line.EndColorSection(selectionHighlighting);
  
                  if (selectionHighlighting is not null)
                  {
