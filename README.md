@@ -1,6 +1,6 @@
 # PSReadLine Patch
 
-给 [PowerShell/PSReadLine](https://github.com/PowerShell/PSReadLine) 打一个小补丁：**把每条候选后面原本显示 `[来源]` 的位置改成显示 kc 的备注**，这样备注不用先按方向键选中才看得到。
+给 [PowerShell/PSReadLine](https://github.com/PowerShell/PSReadLine) 打两个小补丁：**把每条候选后面原本显示 `[来源]` 的位置改成显示 kc 的备注**，并**删掉选中项下方那块多余的灰色备注**（右侧已经实时显示了）。
 
 本仓库只有补丁，不保存上游源码。
 
@@ -23,6 +23,8 @@ PS D:\> npx
 if (_singleton._options.ShowToolTips && itemSelected && !string.IsNullOrWhiteSpace(entry.ToolTip))
 ```
 
+改造后每行都能看到备注，所以选中项下方那块灰色 tooltip 就是重复信息了，一并删掉。
+
 ## 为什么改的是 ToolTip 而不是来源
 
 每行候选只有两个可渲染的槽位：`SuggestionText`（插入命令行的原文，不能塞备注）和 `Source`。
@@ -35,12 +37,14 @@ if (_singleton._options.ShowToolTips && itemSelected && !string.IsNullOrWhiteSpa
 
 | 文件 | 改动 |
 | --- | --- |
-| `PSReadLine/Prediction.Entry.cs` | 每行尾部不再渲染 `[SOURCE]`，改为渲染 `ToolTip`；备注列左边缘对齐，宽度上限见下 |
-| `PSReadLine/Prediction.Views.cs` | 新增常量 `NoteMaxWidth = 40` |
+| `PSReadLine/Prediction.Entry.cs` | 每行尾部不再渲染 `[SOURCE]`，改为渲染 `ToolTip`；备注用 `ListPredictionColor`（即原 `[kc]` 标签的橘色）；备注列左边缘对齐，宽度上限见下 |
+| `PSReadLine/Prediction.Views.cs` | 新增常量 `NoteMaxWidth = 40`；删掉选中项下方的灰色 tooltip：移除渲染调用、高度预留（`_tooltipHeight` / `_maxTooltipHeight` / `TooltipMaxHeight`）与 `RenderTooltip`、`GetToolTipLineCountForHeightCheck` 两个方法 |
 
 备注宽度 = `min(40, (列表宽 - 13) * 0.4)`，命令列在前、备注在后，两列各自固定，所以每一行的备注都从同一列开始。超长备注截断加 `…`。
 
 `Source` 并没有消失：底部 `<kc(10)>` 那行和 `Ctrl+↑↓` 切换来源都仍然正常，它们自己维护来源列表，不读每行这个字段。
+
+`F4`（在备用屏幕里看完整备注）也保留着，它走的是 `SelectedItemTooltip`，与删掉的灰色 tooltip 无关。
 
 ## 用 kc 安装
 
