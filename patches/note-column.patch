@@ -1,0 +1,92 @@
+diff --git a/PSReadLine/Prediction.Entry.cs b/PSReadLine/Prediction.Entry.cs
+index 643afa5..d7e4025 100644
+--- a/PSReadLine/Prediction.Entry.cs
++++ b/PSReadLine/Prediction.Entry.cs
+@@ -108,18 +108,22 @@ namespace Microsoft.PowerShell
+                     return _listItemTextSelected;
+                 }
+ 
+-                // Calculate the 'SOURCE' portion to be rendered.
+-                int sourceStrLen = Source.Length;
+-                int sourceWidth = LengthInBufferCells(Source);
+-                if (sourceWidth > PredictionListView.SourceMaxWidth)
++                // The note rides in the slot that used to hold '[SOURCE]': it is the
++                // per-suggestion payload PSReadLine already carries, while the source name is
++                // useless here because every entry from one predictor reports the same source.
++                // The source still shows in the metadata line and still drives source
++                // navigation, both of which build their own list and never read this field.
++                // The note gets a fixed column so the rows line up like a second table column.
++                string note = ToolTip;
++                int noteWidth = Math.Min(PredictionListView.NoteMaxWidth, (width - 13) * 2 / 5);
++                if (noteWidth < 0)
+                 {
+-                    sourceWidth = PredictionListView.SourceMaxWidth;
+-                    sourceStrLen = SubstringLengthByCells(Source, sourceWidth - ellipsisLength);
++                    noteWidth = 0;
+                 }
+ 
+-                // Calculate the remaining width after deducting the ' [SOURCE]' portion and the leading '> ' part.
+-                // 5 is the length of the decoration characters: "> ", " [", and ']'.
+-                int textWidth = width - sourceWidth - 5;
++                // 3 is the leading '> ' plus the space that separates the two columns.
++                string noteColor = _singleton._options._listPredictionTooltipColor;
++                int textWidth = width - noteWidth - 3;
+                 string textMetadataColor = _singleton._options._listPredictionColor;
+ 
+                 StringBuilder line = new StringBuilder(capacity: width)
+@@ -388,22 +392,26 @@ namespace Microsoft.PowerShell
+                     }
+                 }
+ 
+-                line.Append(' ')
+-                    .Append('[')
+-                    .Append(textMetadataColor);
+-
+-                if (sourceStrLen == Source.Length)
+-                {
+-                    line.Append(Source);
+-                }
+-                else
++                if (noteWidth > 0 && !string.IsNullOrEmpty(note))
+                 {
+-                    line.Append(Source, 0, sourceStrLen)
+-                        .Append(Ellipsis);
+-                }
++                    int noteStrLen = note.Length;
++                    if (LengthInBufferCells(note) > noteWidth)
++                    {
++                        noteStrLen = SubstringLengthByCells(note, noteWidth - ellipsisLength);
++                    }
++
++                    // The command above was padded to a fixed width, so the note column starts
++                    // at the same cell on every row. That fixed left edge is what makes the
++                    // notes scannable; right-aligning them would leave ragged left edges.
++                    line.Append(' ')
++                        .Append(noteColor)
++                        .Append(note, 0, noteStrLen);
+ 
+-                line.EndColorSection(selectionHighlighting)
+-                    .Append(']');
++                    if (noteStrLen < note.Length)
++                    {
++                        line.Append(Ellipsis);
++                    }
++                }
+ 
+                 if (selectionHighlighting is not null)
+                 {
+diff --git a/PSReadLine/Prediction.Views.cs b/PSReadLine/Prediction.Views.cs
+index a9145c4..d5be7e1 100644
+--- a/PSReadLine/Prediction.Views.cs
++++ b/PSReadLine/Prediction.Views.cs
+@@ -217,6 +217,10 @@ namespace Microsoft.PowerShell
+             internal const int ListViewMaxWidth = 100;
+             internal const int TooltipMaxHeight = 4;
+             internal const int SourceMaxWidth = 15;
++            // A suggestion's note shares the trailing '[SOURCE]' slot. It never takes more
++            // than this many cells, or 40% of the list width, so a long note cannot
++            // squeeze the command text out of the row.
++            internal const int NoteMaxWidth = 40;
+ 
+             // Minimal window size.
+             internal const int MinWindowWidth = 50;
